@@ -84,8 +84,8 @@ class ECDSA:
         pub_key = self.curve_mul(self.g, pri_key)
         return pri_key, pub_key
 
-    # 由未压缩私匙生成压缩私匙（wit）
-    def get_wit_from_private_key(self, input_str):
+    # 由未压缩私匙生成压缩私匙（wif）
+    def get_wif_from_private_key(self, input_str):
         import base58
         from sha256 import my_sha256
         input_str = '80' + input_str + '01'
@@ -97,8 +97,8 @@ class ECDSA:
             bits += struct.pack('<B', num)
         return base58.b58encode(bits).decode()
 
-    # 由压缩私匙（wit）生成私匙
-    def get_private_key_from_wit(self, input_str):
+    # 由压缩私匙（wif）生成私匙
+    def get_private_key_from_wif(self, input_str):
         import base58
         bits = base58.b58decode(input_str.encode())
         bits = bits[1:-5]
@@ -112,7 +112,7 @@ class ECDSA:
         if private_key[0:2] == "0x":
             private_key = private_key[2:]
         if is_compressed:
-            key = int(self.get_private_key_from_wit(private_key), 16)
+            key = int(self.get_private_key_from_wif(private_key), 16)
         else:
             key = int(private_key, 16)
         return self.curve_mul(self.g, key)
@@ -185,14 +185,20 @@ class ECDSA:
 
 
 if __name__ == "__main__":
+    from sha256 import my_sha256
+    s = "0001"
+    s1 = "001234ABCD"
+    print(hex(int(s1, 16)))
+    print(my_sha256(s, True, True))
+    print(my_sha256(s1, True, True))
+
     a = ECDSA()
     print(a.private_key)
-    wit = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
-    #print(wit)
+    wif = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
     #print(a.public_key)
     #print(a.get_public_key_from_private_key(hex(a.private_key)[2:]))
-    #print("{:x}".format(a.get_public_key_from_private_key(wit, True)[0]))
-    ckey = a.get_compressed_public_key_from_public_key(a.get_public_key_from_private_key(wit, True))
-    print(a.get_compressed_public_key_from_public_key(a.get_public_key_from_private_key(wit, True)))
+    ckey = a.get_compressed_public_key_from_public_key(a.get_public_key_from_private_key(wif, True))
+    print(a.get_compressed_public_key_from_public_key(a.get_public_key_from_private_key(wif, True)))
     print(a.get_addr_from_compressed_public_key(ckey))
     print(a.get_addr_from_compressed_public_key("02d0de0aaeaefad02b8bdc8a01a1b8b11c696bd3d66a2c5f10780d95b7df412345"))
+
