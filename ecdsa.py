@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
+from typing import Tuple
+
 import sha1
 import random
 import struct
 
 
-# ECDSA签名机制。私匙 160 比特，公匙为点坐标。
-class ECDSA:
+# ECDSA 签名机制。私匙 160 比特，公匙为点坐标。
+class ECDSA(object):
+    """
+        ECDSA 类：
+            一、每次创建类的对象时，会生成对应的新的私匙和公匙
+
+            二、可以生成私匙和公匙，并实现私匙、公匙、压缩私匙、压缩公匙、地址间的转化
+
+            三、可以根据私匙给信息签名，同时可以根据公匙验证信息
+
+    """
     # 生成元及模数
     g = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798, \
         0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
@@ -19,14 +30,18 @@ class ECDSA:
 
     def __init__(self):
         ECDSA.seed = (ECDSA.seed * ECDSA.seed) % ECDSA.MOD
-        self.private_key, self.public_key = self.gen_pair_keys()
+        self.private_key = ECDSA.seed ** 2 % ECDSA.p
+        self.public_key = ECDSA.curve_mul(ECDSA.g, self.private_key)
 
-    # ---------------------------------------------------------------------------
-    # 数学处理模块
-    # ---------------------------------------------------------------------------
+    @classmethod
+    def inv(cls, input_num: int, md: int = p) -> int:
+        """
+        返回输入值在模意义下的逆元
 
-    # inv(x) 返回 x 在模 p 意义下的逆元
-    def inv(self, input_num, md=p):
+        :param input_num: 输入值
+        :param md: 模数，默认为 p
+        :return: 模意义下的逆元
+        """
         k = md - 2
         res = 1
         tmp = input_num % md
@@ -37,55 +52,64 @@ class ECDSA:
             k = k // 2
         return res % md
 
-    # 椭圆曲线 y^2 = x^3 + 7 上加法
-    def curve_add(self, p1, p2):
+    @classmethod
+    def curve_add(cls, p1: Tuple[int, int], p2: Tuple[int, int]) -> Tuple[int, int]:
+        """
+        基于椭圆曲线 y^2=x^3+7 上两点的加法。
+
+        :param p1: 一个点
+        :param p2: 一个点
+        :return: 两点求和结果
+        """
         # 如果是 0, 0 直接返回另一个
-        if p1 == self.INF:
+        if p1 == cls.INF:
             return p2
-        if p2 == self.INF:
+        if p2 == cls.INF:
             return p1
 
         # 相加为 INF 处理
         if p1[0] == p2[0]:
-            if (p1[1] + p2[1]) % self.p == 0:
-                return self.INF
+            if (p1[1] + p2[1]) % cls.p == 0:
+                return cls.INF
 
         # 计算斜率
         if (p1[0] == p2[0]) and (p1[1] == p2[1]):
-            k = (3 * p1[0] * p1[0]) % self.p * self.inv(2 * p1[1]) % self.p
+            k = (3 * p1[0] * p1[0]) % cls.p * cls.inv(2 * p1[1]) % cls.p
         else:
-            k = (p2[1] - p1[1] + self.p) % self.p * self.inv((p2[0] - p1[0] + self.p) % self.p) % self.p
+            k = (p2[1] - p1[1] + cls.p) % cls.p * cls.inv((p2[0] - p1[0] + cls.p) % cls.p) % cls.p
 
         # 计算坐标
-        x3 = (k * k + 2 * self.p - p1[0] - p2[0]) % self.p
-        y3 = (k * (p1[0] - x3 + self.p) + self.p - p1[1]) % self.p
+        x3 = (k * k + 2 * cls.p - p1[0] - p2[0]) % cls.p
+        y3 = (k * (p1[0] - x3 + cls.p) + cls.p - p1[1]) % cls.p
         return x3, y3
 
-    # 椭圆曲线 y^2 = x^3 + 7 上乘法，基于快速加法实现
-    def curve_mul(self, x_in, k):
+    @classmethod
+    def curve_mul(cls, x_in: Tuple[int, int], k: int) -> Tuple[int, int]:
+        """
+        椭圆曲线 y^2=x^3+7 上乘法，基于快速加法实现
+
+        :param x_in: 输入的点 x
+        :param k: 倍数 k
+        :return: 点 kx
+        """
         r = k
-        res = self.INF
+        res = cls.INF
         tmp = x_in
         while r > 0:
             if r % 2 == 1:
-                res = self.curve_add(res, tmp)
-            tmp = self.curve_add(tmp, tmp)
+                res = cls.curve_add(res, tmp)
+            tmp = cls.curve_add(tmp, tmp)
             r = r // 2
         return res
 
-    # ---------------------------------------------------------------------------
-    # 私匙公匙处理模块
-    # 如果没有特殊声明，输入和返回值都是字符串
-    # ---------------------------------------------------------------------------
+    @classmethod
+    def get_wif_from_private_key(cls, input_str: str) -> str:
+        """
+        由未压缩私匙生成压缩私匙 wif
 
-    # 随机生成私匙，公匙（不推荐，随机产生未压缩私匙，计算得出未压缩公匙）
-    def gen_pair_keys(self):
-        pri_key = ECDSA.seed ** 2 % self.p
-        pub_key = self.curve_mul(self.g, pri_key)
-        return pri_key, pub_key
-
-    # 由未压缩私匙生成压缩私匙（wif）
-    def get_wif_from_private_key(self, input_str):
+        :param input_str: 未压缩私匙
+        :return: 压缩私匙
+        """
         import base58
         from sha256 import my_sha256
         input_str = '80' + input_str + '01'
@@ -97,8 +121,14 @@ class ECDSA:
             bits += struct.pack('<B', num)
         return base58.b58encode(bits).decode()
 
-    # 由压缩私匙（wif）生成私匙
-    def get_private_key_from_wif(self, input_str):
+    @classmethod
+    def get_private_key_from_wif(cls, input_str: str) -> str:
+        """
+        由压缩私匙 wif 生成私匙
+
+        :param input_str: 压缩私匙
+        :return: 未压缩私匙
+        """
         import base58
         bits = base58.b58decode(input_str.encode())
         bits = bits[1:-5]
@@ -107,18 +137,31 @@ class ECDSA:
             out_str += hex(bits[i] // 16)[2:] + hex(bits[i] % 16)[2:]
         return out_str
 
-    # 由私匙导出公匙，返回未压缩公匙二元组 (x, y)
-    def get_public_key_from_private_key(self, private_key, is_compressed=False):
+    @classmethod
+    def get_public_key_from_private_key(cls, private_key: str, is_compressed: bool = False) -> Tuple[int, int]:
+        """
+        由私匙导出公匙，返回未压缩公匙二元组
+
+        :param private_key: 私匙
+        :param is_compressed: 私匙是否为压缩私匙
+        :return: 未压缩公匙
+        """
         if private_key[0:2] == "0x":
             private_key = private_key[2:]
         if is_compressed:
-            key = int(self.get_private_key_from_wif(private_key), 16)
+            key = int(cls.get_private_key_from_wif(private_key), 16)
         else:
             key = int(private_key, 16)
-        return self.curve_mul(self.g, key)
+        return cls.curve_mul(cls.g, key)
 
-    # 由未压缩公匙获得压缩公匙。输入为未压缩公匙二元组 (x, y)
-    def get_compressed_public_key_from_public_key(self, public_key):
+    @classmethod
+    def get_compressed_public_key_from_public_key(cls, public_key: Tuple[int, int]) -> str:
+        """
+        由未压缩公匙获得压缩公匙
+
+        :param public_key: 未压缩公匙
+        :return: 压缩公匙
+        """
         x, y = public_key
         compressed_key = ""
         if y % 2 == 0:
@@ -128,13 +171,19 @@ class ECDSA:
         num_str = hex(x)[2:]
         return compressed_key + num_str
 
-    # 由压缩公匙生成地址
-    def get_addr_from_compressed_public_key(self, ckey):
+    @classmethod
+    def get_address_from_compressed_public_key(cls, compressed_key: str) -> str:
+        """
+        由压缩公匙生成地址
+
+        :param compressed_key: 压缩公匙
+        :return: 地址
+        """
         import hashlib
         from sha256 import my_sha256
         import base58
         # part 1: 对 33 位压缩公匙 -> sha256 -> ripemd160
-        sha = my_sha256(ckey, True, True)
+        sha = my_sha256(compressed_key, True, True)
         hash160 = hashlib.new("ripemd160", sha.encode())
         hash160 = hash160.hexdigest()
         hash160 = "00" + hash160
@@ -147,58 +196,50 @@ class ECDSA:
             bits += struct.pack('<B', num)
         return base58.b58encode(bits).decode()
 
-    # ---------------------------------------------------------------------------
-    # 签名处理模块
-    # ---------------------------------------------------------------------------
-    '''
-        签名是 320 比特，由 (R,S) 表示
-        1. 产生 160 比特的随机数 k
-        2. 计算 P = k * g
-        3. P 的横坐标 x 即为 R
-        4. 利用 sha1 计算原信息哈希，得到 160 位整数 z
-        5. S = k^(-1) * (z + private_key * R) % p
-    '''
+    @classmethod
+    def gen_signature(cls, input_str: str, key: int) -> Tuple[int, int]:
+        """
+        根据私匙生成签名
 
-    def gen_signature(self, input_str, key):
+        生成过程：
+            一. 产生 160 比特随机数 k
+
+            二. 计算 P = k * g
+
+            三. P 的横坐标即为 R
+
+            四. 利用 sha1 计算原信息哈希值，得到 160 位整数 z
+
+            五. 计算 S = k^(-1) * (z + private_key * R) % p
+
+            六. 签名 R,S 一共是 320 比特
+
+        :param input_str: 待签名的信息
+        :param key: 私匙，整数格式
+        :return: 签名 R,S
+        """
         k = random.randrange(2 ** 150, 2 ** 160, 1)
-        P = self.curve_mul(self.g, k)
+        P = cls.curve_mul(cls.g, k)
         R = P[0]
         z = int(sha1.my_sha1(input_str), 16)
-        S = self.inv(k, self.order) * ((z + key * R) % self.order) % self.order
+        S = cls.inv(k, cls.order) * ((z + key * R) % cls.order) % cls.order
         return R, S
 
-    # 验证:
-    '''
-        计算 P = S^(-1) * z * g + S^(-1) * R * public_key
-        如果 P 的横坐标 x 与 R 相同，则签名有效
-    '''
+    @classmethod
+    def verify_signature(cls, input_str: str, key: Tuple[int, int], sign: Tuple[int, int]) -> bool:
+        """
+        根据公匙验证签名与信息
 
-    def verify_signature(self, input_str, key, sign):
+        :param input_str: 待验证的信息
+        :param key: 公匙
+        :param sign: 待验证的签名
+        :return: 若签名有效则返回 True，否则为 False
+        """
         R, S = sign
         z = int(sha1.my_sha1(input_str), 16)
-        P = self.curve_add(self.curve_mul(self.g, self.inv(S, self.order) * z),
-                           self.curve_mul(key, self.inv(S, self.order) * R))
+        P = cls.curve_add(cls.curve_mul(cls.g, cls.inv(S, cls.order) * z),
+                          cls.curve_mul(key, cls.inv(S, cls.order) * R))
         if P[0] == R:
             return True
         else:
             return False
-
-
-if __name__ == "__main__":
-    from sha256 import my_sha256
-    s = "0001"
-    s1 = "001234ABCD"
-    print(hex(int(s1, 16)))
-    print(my_sha256(s, True, True))
-    print(my_sha256(s1, True, True))
-
-    a = ECDSA()
-    print(a.private_key)
-    wif = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
-    #print(a.public_key)
-    #print(a.get_public_key_from_private_key(hex(a.private_key)[2:]))
-    ckey = a.get_compressed_public_key_from_public_key(a.get_public_key_from_private_key(wif, True))
-    print(a.get_compressed_public_key_from_public_key(a.get_public_key_from_private_key(wif, True)))
-    print(a.get_addr_from_compressed_public_key(ckey))
-    print(a.get_addr_from_compressed_public_key("02d0de0aaeaefad02b8bdc8a01a1b8b11c696bd3d66a2c5f10780d95b7df412345"))
-
