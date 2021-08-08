@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import binascii
 import struct
 
 MOD = 0xFFFFFFFF
@@ -27,13 +26,23 @@ K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
      0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2]
 
 
-# 循环右移 k 位
-def right_rotate(data, k):
+def right_rotate(data: int, k: int) -> int:
+    """
+    sha256 内部函数，返回循环右移结果。
+
+    :param data: 被移动的数字
+    :param k: 移动的步数
+    :return: 移动后的数字
+    """
     return ((data >> k) | (data << (32 - k))) & MOD
 
 
-# 每一组处理（512 比特，64 字节）
-def my_sha256_hash(input_data):
+def my_sha256_hash(input_data: bytes) -> None:
+    """
+    sha256 内部函数，对分组后的一组消息进行处理，长度 64 字节。
+
+    :param input_data: 输入的字节流，长度 64 字节
+    """
     global H
 
     # 创建信息集合 w，0-15 为初始值，后面 48 位为0，之后进行操作。
@@ -74,7 +83,15 @@ def my_sha256_hash(input_data):
         (H[6] + g) & MOD, (H[7] + h) & MOD
 
 
-def my_sha256(input_str, is_number=False, is_hex=False):
+def my_sha256(input_str: str, is_number: bool = False, is_hex: bool = False) -> str:
+    """
+    对输入字符串进行 sha256
+
+    :param input_str: 输入的字符串，如果为数字需提前转换为字符串格式。
+    :param is_number: 是否按照数字格式处理字符串，若不是则会使用对应字符值。
+    :param is_hex: 是否是十六进制数字串，若为 False 则按照十进制处理。
+    :return: 长度为 64 的十六进制字符串，代表 sha256 后结果
+    """
     if is_number:
         original_len = len(input_str)
         if is_hex:
@@ -119,5 +136,3 @@ def my_sha256(input_str, is_number=False, is_hex=False):
            "{:08x}".format(H[2]) + "{:08x}".format(H[3]) + \
            "{:08x}".format(H[4]) + "{:08x}".format(H[5]) + \
            "{:08x}".format(H[6]) + "{:08x}".format(H[7])
-
-

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import hashlib
 import struct
 
 MOD = 0xFFFFFFFF
@@ -11,13 +10,23 @@ H = H0 = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0]
 K = [0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6]
 
 
-# 循环左移 k 位
-def left_rotate(data, k):
+def left_rotate(data: int, k: int) -> int:
+    """
+    sha1 内部函数，返回循环左移结果。
+
+    :param data: 被移动的数字
+    :param k: 移动的步数
+    :return: 移动后的数字
+    """
     return ((data << k) | (data >> (32 - k))) & MOD
 
 
-# 每一组处理（512 比特，64 字节）
-def my_sha1_hash(input_data):
+def my_sha1_hash(input_data: bytes) -> None:
+    """
+    sha1 内部函数，对分组后的一组消息进行处理，长度 64 字节。
+
+    :param input_data: 输入的字节流，长度 64 字节
+    """
     global H
 
     # 创建信息集合 w，0-15 为初始值，后面 64 位为 0，之后进行操作。
@@ -50,7 +59,13 @@ def my_sha1_hash(input_data):
         (H[4] + e) & MOD
 
 
-def my_sha1(input_str):
+def my_sha1(input_str: str) -> str:
+    """
+    返回输入字符串经 sha1 操作后的字符串
+
+    :param input_str: 输入的字符串
+    :return: 经 sha1 后返回的字符串，长度 40
+    """
     # 消息填充
     # len() 返回的是字符数（英文 8 比特，1 字节），所有方法都应是 8 倍
     data_len = struct.pack('>Q', len(input_str) * 8)
@@ -78,8 +93,3 @@ def my_sha1(input_str):
            "{:08x}".format(H[2]) + "{:08x}".format(H[3]) + \
            "{:08x}".format(H[4])
 
-
-if __name__ == "__main__":
-    s = "sjskfjlksjefjijflksjelkfjxljfesjlfksjlkfjsiejfljk   sdjfk w laklkwj ''''230498309489"
-    print(my_sha1(s))
-    print(hashlib.sha1(s.encode()).hexdigest())
