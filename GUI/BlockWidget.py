@@ -5,6 +5,9 @@ from PyQt5.QtWidgets import QVBoxLayout, QLabel, QFrame
 
 
 class QBlockWidget(QFrame):
+    """
+    用来显示区块列表中的一个区块。
+    """
     def __init__(self):
         super().__init__()
         self.setMinimumSize(740, 220)
@@ -44,8 +47,8 @@ class QBlockWidget(QFrame):
         layout.setAlignment(Qt.AlignLeft)
         self.setLayout(layout)
 
-    def set_hash(self, hash):
-        self.block_hash = hash
+    def set_hash(self, new_hash):
+        self.block_hash = new_hash
         self.update()
 
     def set_time(self, time):

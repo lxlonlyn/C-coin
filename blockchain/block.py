@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import time
+import logging
 from typing import List
 from utils.sha256 import my_sha256
 from blockchain.transaction import Transaction, Out
@@ -15,15 +16,16 @@ class Block(object):
         """
         创建一个新的区块，并传入交易记录。
 
-        :param miner_address: 矿工地址，字符串
+        :param miner_address: 矿工地址，字符串0
         """
         self.timeStamp = Block.set_timestamp()
         self.data = Block.dig_source(miner_address)
         self.preHash = '0' * 64
-        self.merkleHash = None
+        self.merkleHash = ""
         self.set_merkle_hash()
-        self.blockHash = None
+        self.blockHash = ""
         self.set_block_hash()
+        logging.debug("新区块(BlockHash='" + self.blockHash + "')成功生成。")
 
     @classmethod
     def set_timestamp(cls) -> float:
@@ -44,7 +46,7 @@ class Block(object):
         """
         coinbase = Transaction()
         new = Out(50, miner_address)
-        coinbase.addOut(new)
+        coinbase.add_output(new)
         coinbase.seal()
         return [coinbase]
 
@@ -106,9 +108,10 @@ class Blockchain(object):
     区块链，本质是区块的 list 集合。
     """
     def __init__(self):
-        self.blockList = []  # type: list[Block]
+        self.blockList = []  # type: List[Block]
 
     def add_block(self, new_block: Block) -> None:
         if len(self.blockList) > 0:
             new_block.link(self.blockList[-1].blockHash)
         self.blockList.append(new_block)
+        logging.debug("已将新区块(block hash = '" + new_block.blockHash + "')加入区块链。")

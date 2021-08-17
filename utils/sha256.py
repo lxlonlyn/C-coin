@@ -74,8 +74,6 @@ def my_sha256_hash(input_data: bytes) -> None:
         b = a
         a = (tmp1 + tmp2) & MOD
 
-    # print(a, b, c, d, e, f, g, h)
-
     # 更改目前哈希值
     H = (H[0] + a) & MOD, (H[1] + b) & MOD, \
         (H[2] + c) & MOD, (H[3] + d) & MOD, \
