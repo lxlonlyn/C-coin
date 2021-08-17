@@ -14,7 +14,7 @@
 - blockchain
   - block.py
   - error.py
-  - main.py
+  - user.py
   - transaction.py
 - GUI
   - BlockWidget.py
