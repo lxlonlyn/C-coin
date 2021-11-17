@@ -3,8 +3,8 @@ from typing import Tuple
 import random
 import struct
 import hashlib
-from sha256 import my_sha256
-from sha1 import my_sha1
+from .sha256 import my_sha256
+from .sha1 import my_sha1
 import base58
 
 
@@ -78,7 +78,8 @@ class ECDSA(object):
         if (p1[0] == p2[0]) and (p1[1] == p2[1]):
             k = (3 * p1[0] * p1[0]) % cls.p * cls.inv(2 * p1[1]) % cls.p
         else:
-            k = (p2[1] - p1[1] + cls.p) % cls.p * cls.inv((p2[0] - p1[0] + cls.p) % cls.p) % cls.p
+            k = (p2[1] - p1[1] + cls.p) % cls.p * \
+                cls.inv((p2[0] - p1[0] + cls.p) % cls.p) % cls.p
 
         # 计算坐标
         x3 = (k * k + 2 * cls.p - p1[0] - p2[0]) % cls.p
@@ -181,7 +182,8 @@ class ECDSA(object):
         """
         # part 1: 对 33 位压缩公匙 -> sha256 -> ripemd160
         sha = my_sha256(compressed_key, True, True)
-        hash160 = hashlib.new("ripemd160", sha.encode())
+        hash160 = hashlib.new("ripemd160", int(
+            sha, base=16).to_bytes(length=32, byteorder='big'))
         hash160 = hash160.hexdigest()
         hash160 = "00" + hash160
         # part 2: 校验码由 part 1 两次 hash 得到
