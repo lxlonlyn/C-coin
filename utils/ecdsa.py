@@ -36,6 +36,16 @@ class ECDSA(object):
         self.public_key = ECDSA.curve_mul(ECDSA.g, self.private_key)
 
     @classmethod
+    def quick_pow(cls, x: int, k: int, md: int = p) -> int:
+        res = 1
+        while k:
+            if k % 2 == 1:
+                res = res * x % md
+            x = x * x % md
+            k = k // 2
+        return res % md
+
+    @classmethod
     def inv(cls, input_num: int, md: int = p) -> int:
         """
         返回输入值在模意义下的逆元
@@ -171,6 +181,57 @@ class ECDSA(object):
             compressed_key += "03"
         num_str = hex(x)[2:]
         return compressed_key + num_str
+
+    @classmethod
+    def get_public_key_from_compressed_public_key(cls, compressed_key: str) -> Tuple[int, int]:
+        """
+        由压缩公匙获得未压缩公匙
+
+        :param public_key: 压缩公匙
+        :return: 未压缩公匙
+        """
+        y_flag = int(compressed_key[:2], base=16) % 2
+        _x = int(compressed_key[2:], base=16)
+        x = (_x ** 3 + 7) % ECDSA.p
+
+        def cipolla(x: int) -> int:
+            """
+            利用 Cipolla 求二次剩余
+
+            """
+            class cp:
+                def __init__(self, r: int, i: int) -> None:
+                    self.real = r
+                    self.imag = i
+
+            def cpmul(a: cp, b: cp, w: int) -> cp:
+                ans = cp(0, 0)
+                ans.real = ((a.real * b.real % ECDSA.p + a.imag * b.imag %
+                             ECDSA.p * w % ECDSA.p) % ECDSA.p + ECDSA.p) % ECDSA.p
+                ans.imag = ((a.real * b.imag % ECDSA.p + a.imag *
+                             b.real % ECDSA.p) % ECDSA.p + ECDSA.p) % ECDSA.p
+                return ans
+
+            while True:
+                a = random.randint(1, ECDSA.p - 1)
+                w = ((a * a % ECDSA.p - x) % ECDSA.p + ECDSA.p) % ECDSA.p
+                if ECDSA.quick_pow(w, (ECDSA.p - 1) // 2) == ECDSA.p - 1:
+                    break
+
+            x = cp(a, 1)
+            y = cp(1, 0)
+            b = (ECDSA.p + 1) // 2
+            while b > 0:
+                if b % 2 == 1:
+                    y = cpmul(y, x, w)
+                x = cpmul(x, x, w)
+                b = b // 2
+            return y.real % ECDSA.p
+
+        y = cipolla(x)
+        if y % 2 != y_flag:
+            y = ECDSA.p - y
+        return _x, y
 
     @classmethod
     def get_address_from_compressed_public_key(cls, compressed_key: str) -> str:
