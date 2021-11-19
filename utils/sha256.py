@@ -48,8 +48,10 @@ def my_sha256_hash(input_data: bytes) -> None:
     # 创建信息集合 w，0-15 为初始值，后面 48 位为0，之后进行操作。
     w = list(struct.unpack(">" + "I" * 16, input_data)) + ([0] * 48)
     for i in range(16, 64):
-        s0 = right_rotate(w[i - 15], 7) ^ right_rotate(w[i - 15], 18) ^ (w[i - 15] >> 3)
-        s1 = right_rotate(w[i - 2], 17) ^ right_rotate(w[i - 2], 19) ^ (w[i - 2] >> 10)
+        s0 = right_rotate(
+            w[i - 15], 7) ^ right_rotate(w[i - 15], 18) ^ (w[i - 15] >> 3)
+        s1 = right_rotate(
+            w[i - 2], 17) ^ right_rotate(w[i - 2], 19) ^ (w[i - 2] >> 10)
         w[i] = (w[i - 16] + s0 + w[i - 7] + s1) & MOD
 
     # 初始化变量
@@ -91,7 +93,8 @@ def my_sha256(input_str: str, is_number: bool = False, is_hex: bool = False) -> 
     :return: 长度为 64 的十六进制字符串，代表 sha256 后结果
     """
     if is_number:
-        original_len = len(input_str)
+        # original_len = len(input_str)
+        original_len = 64
         if is_hex:
             num_str = hex(int(input_str, 16))[2:]
         else:
@@ -103,7 +106,9 @@ def my_sha256(input_str: str, is_number: bool = False, is_hex: bool = False) -> 
         data_len = struct.pack('>Q', len(num_str) * 4)
         data = b''
         for i in range(0, len(num_str), 2):
-            num = (int(num_str[i], 16) << 4) + (int(num_str[i + 1], 16))
+            num = (int(num_str[i], 16) << 4)
+            if i + 1 < len(num_str):
+                num += int(num_str[i + 1], 16)
             data += struct.pack('<B', num)
     else:
         # 消息填充

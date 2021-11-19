@@ -6,6 +6,7 @@ import hashlib
 from .sha256 import my_sha256
 from .sha1 import my_sha1
 import base58
+import secrets
 
 
 # ECDSA 签名机制。私匙 160 比特，公匙为点坐标。
@@ -23,16 +24,14 @@ class ECDSA(object):
     g = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798, \
         0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
     p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-    # 随机数种子
-    seed = 8 * 3 ** 179
     MOD = 0xFFFFFFFFFFFFFFFFFFFFFFFF0123456789ABCEA7
     # 定义无穷点，GF 的阶
     INF = (-1, -1)
     order = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
     def __init__(self):
-        ECDSA.seed = (ECDSA.seed * ECDSA.seed) % ECDSA.MOD
-        self.private_key = ECDSA.seed ** 2 % ECDSA.p
+        self.private_key = secrets.randbits(256) % ECDSA.p
+        print("private key:", self.private_key)
         self.public_key = ECDSA.curve_mul(ECDSA.g, self.private_key)
 
     @classmethod
